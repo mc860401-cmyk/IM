@@ -31,17 +31,51 @@ test.describe.configure({ mode: "serial" });
 let receiptNo = "";
 const png = makePng();
 
-test("필수값 누락 시 접수되지 않고 오류가 표시된다", async ({ page }) => {
+test("홈: 법인 정보와 현 구성원(조상우·이민철)만 표시, 퇴사자는 없음", async ({ page }) => {
   await page.goto("/");
+  await expect(page.getByRole("img", { name: /법무법인 우선/ }).first()).toBeVisible();
+  const members = page.getByTestId("members");
+  await expect(members.locator("a")).toHaveCount(2);
+  await expect(members).toContainText("조상우");
+  await expect(members).toContainText("대표변호사·변리사");
+  await expect(members).toContainText("이민철");
+  await expect(page.locator("body")).toContainText("서울 서초구 서초중앙로 160, 법률센터 203호 (06605)");
+  await expect(page.locator("body")).toContainText("광고책임변호사: 조상우 대표변호사");
+  await shot(page, "0-home");
+
+  await members.getByText("조상우").click();
+  await expect(page).toHaveURL(/\/lawyers\/cho-sangwoo$/);
+  await expect(page.getByRole("heading", { level: 1 })).toContainText("조상우");
+  await expect(page.locator("body")).toContainText("대한특허변호사회 총무이사");
+  await shot(page, "0-lawyer-cho");
+  await page.goto("/lawyers/lee-minchul");
+  await expect(page.locator("body")).toContainText("前 SK하이닉스");
+
+  // 퇴사자 정보가 어느 공개 페이지에도 없어야 한다
+  for (const path of ["/", "/intake", "/lawyers/cho-sangwoo", "/lawyers/lee-minchul"]) {
+    await page.goto(path);
+    await expect(page.locator("body")).not.toContainText("김나연");
+    await expect(page.locator("body")).not.toContainText("nykim@");
+  }
+  expect((await page.request.get("/lawyers/kim-nayeon")).status()).toBe(404);
+
+  await page.setViewportSize({ width: 390, height: 844 });
+  await page.goto("/");
+  await shot(page, "0-home-mobile");
+  await page.setViewportSize({ width: 1280, height: 720 });
+});
+
+test("필수값 누락 시 접수되지 않고 오류가 표시된다", async ({ page }) => {
+  await page.goto("/intake");
   await page.getByRole("button", { name: "접수하기" }).click();
   await expect(page.getByText("접수자 유형을 선택해 주세요.")).toBeVisible();
   await expect(page.getByText("악플 내용(원문)을 입력해 주세요.")).toBeVisible();
   await expect(page.getByText("개인정보 수집·이용에 동의해야 접수할 수 있습니다.")).toBeVisible();
-  await expect(page).toHaveURL("/");
+  await expect(page).toHaveURL("/intake");
 });
 
 test("고객: 법정대리인이 악플 2건과 증거파일을 접수한다", async ({ page }) => {
-  await page.goto("/");
+  await page.goto("/intake");
   await page.getByLabel("법정대리인(미성년 피해자)").check();
   await page.getByLabel("법정대리인 이름").fill("테스트부모");
   await page.getByLabel("피해자와의 관계").selectOption("모");
