@@ -112,7 +112,7 @@ async function createNeonDb(url: string): Promise<Db> {
 
 async function createPgliteDb(): Promise<Db> {
   const { PGlite } = await import("@electric-sql/pglite");
-  const target = process.env.DB_PATH ?? path.join(process.cwd(), "data", "pglite");
+  const target = process.env.DB_PATH ?? path.join(/* turbopackIgnore: true */ process.cwd(), "data", "pglite");
   let pg;
   if (target === "memory") {
     pg = new PGlite();

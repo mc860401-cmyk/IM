@@ -24,10 +24,11 @@ export async function GET(req: Request, { params }: { params: Promise<{ fileId: 
       "Content-Disposition": `${inline ? "inline" : "attachment"}; filename="${ascii}"; filename*=UTF-8''${encodeURIComponent(meta.original_name)}`,
       "X-Content-Type-Options": "nosniff",
       "Cache-Control": "private, no-store",
-      // 이미지는 샌드박스로 격리(PDF는 샌드박스 시 브라우저 뷰어가 막혀 제외)
-      "Content-Security-Policy": meta.mime === "application/pdf"
-        ? "default-src 'none'; img-src 'self'; style-src 'unsafe-inline'"
-        : "default-src 'none'; img-src 'self'; style-src 'unsafe-inline'; sandbox",
+      // 미리보기 이미지는 샌드박스로 격리. 다운로드(attachment)는 화면에 렌더링되지 않아 불필요하고,
+      // PDF는 sandbox 시 브라우저 뷰어가 막히므로 제외한다.
+      "Content-Security-Policy": inline && meta.mime !== "application/pdf"
+        ? "default-src 'none'; img-src 'self'; style-src 'unsafe-inline'; sandbox"
+        : "default-src 'none'; img-src 'self'; style-src 'unsafe-inline'",
     },
   });
 }

@@ -19,7 +19,7 @@ const useBlob = () => {
   if (process.env.VERCEL) throw new Error("BLOB_READ_WRITE_TOKEN이 없습니다. Vercel 프로젝트에 Blob 저장소를 연결하세요.");
   return false;
 };
-const localDir = () => process.env.UPLOAD_DIR ?? path.join(process.cwd(), "data", "uploads");
+const localDir = () => process.env.UPLOAD_DIR ?? path.join(/* turbopackIgnore: true */ process.cwd(), "data", "uploads");
 
 function safeLocalPath(key: string): string {
   const base = path.resolve(localDir());
