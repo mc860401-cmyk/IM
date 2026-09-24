@@ -1,6 +1,7 @@
-import { NextResponse } from "next/server";
+import { after, NextResponse } from "next/server";
 import { validateSubmission } from "@/lib/validation";
 import { createSubmission, SubmissionError } from "@/lib/submissions";
+import { notifyNewSubmission } from "@/lib/notify";
 
 export const runtime = "nodejs";
 
@@ -16,7 +17,22 @@ export async function POST(req: Request) {
     return NextResponse.json({ error: "입력값을 확인해 주세요.", errors: v.errors }, { status: 422 });
   }
   try {
-    const { receiptNo } = await createSubmission(v.data);
+    const created = await createSubmission(v.data);
+    const { receiptNo } = created;
+    // 알림 실패는 접수 결과에 영향을 주지 않는다. 응답 후 실행.
+    const baseUrl = process.env.APP_BASE_URL || new URL(req.url).origin;
+    after(() =>
+      notifyNewSubmission({
+        id: created.id,
+        receiptNo,
+        createdAt: created.createdAt,
+        applicantType: v.data.applicantType,
+        displayName: v.data.displayName,
+        commentCount: v.data.comments.length,
+        fileCount: created.fileCount,
+        baseUrl,
+      }).catch((e) => console.error("[notify] 메일 발송 실패", e)),
+    );
     return NextResponse.json({ receiptNo }, { status: 201 });
   } catch (e) {
     if (e instanceof SubmissionError) {

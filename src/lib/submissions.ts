@@ -66,7 +66,12 @@ export async function createSubmission(s: CleanSubmission, now: Date = new Date(
   return db.tx(async (q) => {
     const created = await insertSubmission(q, s, now);
     await attachFiles(q, s, created.submissionId, created.commentIds);
-    return { id: created.submissionId, receiptNo: created.receiptNo };
+    return {
+      id: created.submissionId,
+      receiptNo: created.receiptNo,
+      createdAt: now,
+      fileCount: new Set(s.comments.flatMap((c) => c.fileIds)).size,
+    };
   });
 }
 
