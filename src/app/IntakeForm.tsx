@@ -10,6 +10,7 @@ import {
   emptyApplicant, emptyComment, validateSubmission,
   type ApplicantInput, type CommentInput, type Errors,
 } from "@/lib/validation";
+import EvidencePicker, { type UploadedMeta } from "./EvidencePicker";
 
 function Err({ errors, k }: { errors: Errors; k: string }) {
   return errors[k] ? <div className="error" role="alert">{errors[k]}</div> : null;
@@ -69,6 +70,9 @@ export default function IntakeForm() {
   const [errors, setErrors] = useState<Errors>({});
   const [submitting, setSubmitting] = useState(false);
   const [serverError, setServerError] = useState("");
+  const [fileMeta, setFileMeta] = useState<Record<string, UploadedMeta>>({});
+  const [uploading, setUploading] = useState(0);
+  const totalFiles = comments.reduce((n, c) => n + c.fileIds.length, 0);
 
   const setA = (k: keyof ApplicantInput) => (v: string) => setApplicant((p) => ({ ...p, [k]: v }));
   const setC = (i: number, patch: Partial<CommentInput>) =>
@@ -80,6 +84,10 @@ export default function IntakeForm() {
   async function onSubmit(e: React.FormEvent) {
     e.preventDefault();
     setServerError("");
+    if (uploading > 0) {
+      setServerError("파일 업로드가 끝난 뒤 접수해 주세요.");
+      return;
+    }
     const payload = { applicantType, applicant, comments, narrative, consent };
     const v = validateSubmission(payload);
     if (!v.ok) {
@@ -188,7 +196,7 @@ export default function IntakeForm() {
             <div key={i} className="card" style={{ background: "#fafbfc" }} data-testid={`comment-${i}`}>
               <div className="spread">
                 <h3>악플 {i + 1}</h3>
-                <button type="button" className="btn secondary small" onClick={() => removeComment(i)} disabled={comments.length === 1}>
+                <button type="button" className="btn secondary small" onClick={() => removeComment(i)} disabled={comments.length === 1 || uploading > 0}>
                   항목 삭제
                 </button>
               </div>
@@ -224,11 +232,24 @@ export default function IntakeForm() {
                 </div>
                 <SelectField id={id("postStatus")} label="현재 게시 상태" value={c.postStatus} onChange={(v) => setC(i, { postStatus: v })} options={POST_STATUSES} errors={errors} errKey={`${p}.postStatus`} />
                 <TextField id={id("firstKnown")} label="처음 알게 된 날" type="date" value={c.firstKnownDate} onChange={(v) => setC(i, { firstKnownDate: v })} errors={errors} errKey={`${p}.firstKnownDate`} />
+                <EvidencePicker
+                  inputId={id("files")}
+                  files={c.fileIds.map((f) => fileMeta[f]).filter(Boolean)}
+                  totalCount={totalFiles}
+                  onAdd={(f) => {
+                    setFileMeta((m) => ({ ...m, [f.id]: f }));
+                    setComments((list) => list.map((x, j) => (j === i ? { ...x, fileIds: [...x.fileIds, f.id] } : x)));
+                  }}
+                  onRemove={(fid) => setComments((list) => list.map((x, j) => (j === i ? { ...x, fileIds: x.fileIds.filter((y) => y !== fid) } : x)))}
+                  onBusyChange={(d) => setUploading((n) => n + d)}
+                  error={errors[`${p}.files`]}
+                />
               </div>
             </div>
           );
         })}
         <button type="button" className="btn secondary" onClick={addComment}>+ 악플 항목 추가</button>
+        <Err errors={errors} k="files" />
       </section>
 
       {/* 4. 사건 경위 */}
@@ -258,8 +279,8 @@ export default function IntakeForm() {
       </section>
 
       {serverError && <div className="error" role="alert" style={{ marginBottom: 12 }}>{serverError}</div>}
-      <button type="submit" className="btn" disabled={submitting} style={{ width: "100%", padding: 14 }}>
-        {submitting ? "접수 중…" : "접수하기"}
+      <button type="submit" className="btn" disabled={submitting || uploading > 0} style={{ width: "100%", padding: 14 }}>
+        {submitting ? "접수 중…" : uploading > 0 ? "파일 업로드 중…" : "접수하기"}
       </button>
     </form>
   );

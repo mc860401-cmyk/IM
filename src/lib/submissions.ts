@@ -38,10 +38,32 @@ async function insertSubmission(q: Queryable, s: CleanSubmission, now: Date) {
   return { submissionId, receiptNo, commentIds };
 }
 
+/** 업로드해 둔 임시 파일을 악플 항목에 연결한다. 하나라도 유효하지 않으면 접수 전체를 취소. */
+async function attachFiles(q: Queryable, s: CleanSubmission, submissionId: string, commentIds: string[]) {
+  const seen = new Set<string>();
+  for (const [i, c] of s.comments.entries()) {
+    const ids = c.fileIds.filter((id) => !seen.has(id) && seen.add(id));
+    if (ids.length === 0) continue;
+    const rows = await q.query(
+      `UPDATE evidence_files SET submission_id = $1, comment_id = $2
+        WHERE id = ANY($3::text[]) AND submission_id IS NULL
+        RETURNING id`,
+      [submissionId, commentIds[i], ids],
+    );
+    if (rows.length !== ids.length) {
+      throw new SubmissionError(
+        `악플 ${i + 1}의 첨부파일 중 만료되었거나 확인할 수 없는 파일이 있습니다. 해당 파일을 삭제 후 다시 첨부해 주세요.`,
+        `comments.${i}.files`,
+      );
+    }
+  }
+}
+
 export async function createSubmission(s: CleanSubmission, now: Date = new Date()) {
   const db = await getDb();
   return db.tx(async (q) => {
     const created = await insertSubmission(q, s, now);
+    await attachFiles(q, s, created.submissionId, created.commentIds);
     return { id: created.submissionId, receiptNo: created.receiptNo };
   });
 }
