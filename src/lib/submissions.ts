@@ -2,6 +2,7 @@ import "server-only";
 import { getDb, type Queryable } from "./db";
 import { issueReceiptNo } from "./receipt";
 import type { CleanSubmission } from "./validation";
+import type { ApplicantType, Status } from "./constants";
 
 export class SubmissionError extends Error {
   constructor(message: string, public field?: string) {
@@ -66,4 +67,40 @@ export async function createSubmission(s: CleanSubmission, now: Date = new Date(
     await attachFiles(q, s, created.submissionId, created.commentIds);
     return { id: created.submissionId, receiptNo: created.receiptNo };
   });
+}
+
+// ───────── 관리자 조회 ─────────
+
+export interface SubmissionListItem {
+  id: string;
+  receipt_no: string;
+  created_at: string;
+  status: Status;
+  display_name: string;
+  applicant_type: ApplicantType;
+  phone: string;
+}
+
+export const PAGE_SIZE = 50;
+
+export async function listSubmissions(status: Status | null, page: number) {
+  const db = await getDb();
+  const where = status ? "WHERE status = $1" : "";
+  const params: unknown[] = status ? [status] : [];
+  const items = await db.query<SubmissionListItem>(
+    `SELECT id::text, receipt_no, created_at, status, display_name, applicant_type, phone
+       FROM submissions ${where}
+      ORDER BY created_at DESC, id DESC
+      LIMIT ${PAGE_SIZE} OFFSET ${Math.max(0, page - 1) * PAGE_SIZE}`,
+    params,
+  );
+  const countRows = await db.query<{ status: Status; n: string }>(
+    `SELECT status, count(*)::text AS n FROM submissions GROUP BY status`,
+  );
+  const counts: Record<Status | "all", number> = { all: 0, new: 0, in_progress: 0, done: 0 };
+  for (const r of countRows) {
+    counts[r.status] = Number(r.n);
+    counts.all += Number(r.n);
+  }
+  return { items, counts };
 }

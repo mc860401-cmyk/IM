@@ -12,7 +12,7 @@ import fs from "node:fs";
 export type Row = Record<string, unknown>;
 
 export interface Queryable {
-  query<T extends Row = Row>(sql: string, params?: unknown[]): Promise<T[]>;
+  query<T = Row>(sql: string, params?: unknown[]): Promise<T[]>;
 }
 
 export interface Db extends Queryable {
