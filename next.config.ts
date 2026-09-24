@@ -12,6 +12,10 @@ const nextConfig: NextConfig = {
   // PGlite는 WASM 파일을 런타임에 읽으므로 번들링하지 않는다.
   serverExternalPackages: ["@electric-sql/pglite"],
   poweredByHeader: false,
+  // 데모 모드에서 PGlite(WASM) 파일이 Vercel 함수에 포함되도록 한다.
+  outputFileTracingIncludes: {
+    "/**": ["./node_modules/@electric-sql/pglite/dist/*.wasm", "./node_modules/@electric-sql/pglite/dist/*.data"],
+  },
   async headers() {
     return [
       { source: "/:path*", headers: securityHeaders },

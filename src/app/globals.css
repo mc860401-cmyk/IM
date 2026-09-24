@@ -241,3 +241,5 @@ dl.kv dd { margin: 0; white-space: pre-wrap; word-break: break-all; }
 .foot-contact small { display: block; color: #8c8c8c; }
 .foot-contact a { color: #fff; text-decoration: none; font-size: 22px; font-weight: 700; }
 @media (max-width: 900px) { .site-footer-inner { grid-template-columns: 1fr; } .foot-contact a { font-size: 18px; } }
+
+.demo-banner { background: #fff4d6; color: #6b4a00; font-size: 13px; text-align: center; padding: 6px 12px; }

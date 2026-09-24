@@ -1,5 +1,6 @@
 import type { Metadata } from "next";
 import "./globals.css";
+import { isDemoMode } from "@/lib/demo";
 
 export const metadata: Metadata = {
   title: "법무법인 우선 | 악플 고소 접수",
@@ -16,7 +17,14 @@ export default function RootLayout({ children }: { children: React.ReactNode }) 
           href="https://cdn.jsdelivr.net/gh/orioncactus/pretendard@v1.3.9/dist/web/variable/pretendardvariable-dynamic-subset.min.css"
         />
       </head>
-      <body>{children}</body>
+      <body>
+        {isDemoMode() && (
+          <div className="demo-banner" role="note">
+            초안(데모) 사이트입니다 — 실제 접수를 받지 않으며, 입력한 내용은 서버가 재시작되면 사라집니다.
+          </div>
+        )}
+        {children}
+      </body>
     </html>
   );
 }

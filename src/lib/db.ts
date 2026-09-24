@@ -1,6 +1,7 @@
 import "server-only";
 import path from "node:path";
 import fs from "node:fs";
+import { isDemoMode } from "./demo";
 
 /**
  * DB 접근 계층.
@@ -112,7 +113,8 @@ async function createNeonDb(url: string): Promise<Db> {
 
 async function createPgliteDb(): Promise<Db> {
   const { PGlite } = await import("@electric-sql/pglite");
-  const target = process.env.DB_PATH ?? path.join(/* turbopackIgnore: true */ process.cwd(), "data", "pglite");
+  // 데모 모드(Vercel)는 쓰기 가능한 디스크가 없으므로 메모리 DB
+  const target = process.env.DB_PATH ?? (isDemoMode() && process.env.VERCEL ? "memory" : undefined) ?? path.join(/* turbopackIgnore: true */ process.cwd(), "data", "pglite");
   let pg;
   if (target === "memory") {
     pg = new PGlite();
@@ -144,7 +146,7 @@ const globalForDb = globalThis as unknown as { __cbDb?: Promise<Db> };
 export function getDb(): Promise<Db> {
   if (!globalForDb.__cbDb) {
     globalForDb.__cbDb = (async () => {
-      if (process.env.VERCEL && !process.env.DATABASE_URL) {
+      if (process.env.VERCEL && !process.env.DATABASE_URL && !isDemoMode()) {
         throw new Error("DATABASE_URL이 없습니다. Vercel 프로젝트에 Neon 데이터베이스를 연결하세요.");
       }
       const db = process.env.DATABASE_URL

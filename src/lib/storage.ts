@@ -1,6 +1,7 @@
 import "server-only";
 import path from "node:path";
 import fs from "node:fs/promises";
+import { isDemoMode } from "./demo";
 
 /**
  * 증거파일 저장소.
@@ -16,10 +17,11 @@ export interface StoredFile {
 
 const useBlob = () => {
   if (process.env.BLOB_READ_WRITE_TOKEN) return true;
-  if (process.env.VERCEL) throw new Error("BLOB_READ_WRITE_TOKEN이 없습니다. Vercel 프로젝트에 Blob 저장소를 연결하세요.");
+  if (process.env.VERCEL && !isDemoMode()) throw new Error("BLOB_READ_WRITE_TOKEN이 없습니다. Vercel 프로젝트에 Blob 저장소를 연결하세요.");
   return false;
 };
-const localDir = () => process.env.UPLOAD_DIR ?? path.join(/* turbopackIgnore: true */ process.cwd(), "data", "uploads");
+const localDir = () =>
+  process.env.UPLOAD_DIR ?? (isDemoMode() && process.env.VERCEL ? "/tmp/cb-uploads" : undefined) ?? path.join(/* turbopackIgnore: true */ process.cwd(), "data", "uploads");
 
 function safeLocalPath(key: string): string {
   const base = path.resolve(localDir());
