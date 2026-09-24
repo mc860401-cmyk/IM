@@ -144,6 +144,9 @@ const globalForDb = globalThis as unknown as { __cbDb?: Promise<Db> };
 export function getDb(): Promise<Db> {
   if (!globalForDb.__cbDb) {
     globalForDb.__cbDb = (async () => {
+      if (process.env.VERCEL && !process.env.DATABASE_URL) {
+        throw new Error("DATABASE_URL이 없습니다. Vercel 프로젝트에 Neon 데이터베이스를 연결하세요.");
+      }
       const db = process.env.DATABASE_URL
         ? await createNeonDb(process.env.DATABASE_URL)
         : await createPgliteDb();
